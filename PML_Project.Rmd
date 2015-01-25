@@ -1,0 +1,109 @@
+---
+title: "Practical_Machine_Learning_Project"
+author: "Yves Ndjoli"
+date: "Sunday, January 25, 2015"
+output: html_document
+---
+
+This is my project from the courseras course Practical Machine Learning of the specialization Data Science.  
+
+In this project we have to built a machine learning model with help of train datas to classify the test datas from accelerometers on the belt, forearm, arm, and dumbell of 6 participants.  
+
+More information about the data avalaible here http://groupware.les.inf.puc-rio.br/har    
+
+download and read the file  
+```{r}
+#vSourceTrain= "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+#vSourceTest= "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+#download.file(vSourceTrain, destfile="TrainData.csv")
+#download.file(vSourceTest, destfile="TestData.csv")
+
+trainfile="TrainData.csv"
+testfile="TestData.csv"
+
+TrainDataTemp1=read.csv(trainfile,na.strings=c("", "NA", "NULL"))
+TestDataTemp1=read.csv(testfile,na.strings=c("", "NA", "NULL"))
+```
+
+# Exploring the datas
+
+```{r, results="hide"}
+head(TrainDataTemp1,5)
+tail(TrainDataTemp1,5)
+summary(TrainDataTemp1)
+```
+
+# Prepossing
+
+Remove columns with NAs values
+```{r}
+TrainDataTemp2=TrainDataTemp1[,colSums(is.na(TrainDataTemp1)) < length(TrainDataTemp1)*3/4]
+```
+
+Remove columns which name contains X, timestamp, user_name, window
+```{r}
+TrainDataTemp3=TrainDataTemp2[,-c(1,2,3,4,5,6,7)]
+dim(TrainDataTemp3)
+```
+
+Keep same columns for the test datas
+```{r}
+TestDataTemp2=TestDataTemp1[,setdiff(names(TrainDataTemp3), "classe")]
+dim(TestDataTemp2)
+```
+
+# Partition of TrainData
+```{r}
+require(caret)
+set.seed(1000)
+inTrain=createDataPartition(y=TrainDataTemp3$classe,p=0.75,list=FALSE)
+Ttraining=TrainDataTemp3[inTrain,]
+Ttest=TrainDataTemp3[-inTrain,]
+dim(Ttraining)
+dim(Ttest)
+```
+
+# Fit a model and testing
+
+Fit a model with tree method rpart
+```{r}
+fitModel=train(classe~.,data=Ttraining,method="rpart")
+```
+
+Prediction for the Ttest
+```{r}
+Ppred = predict(fitModel, Ttest)
+```
+
+Check the prediction
+```{r}
+confusionMatrix(Ppred, Ttest$classe)
+```
+Low accuracy: 0.51, that means height probability of miss predictions
+
+Fit a model again now with the random forest method    
+Don't use the caret package like rpart because performance problem  
+```{r}
+library(randomForest)
+#fitModel2=train(classe~.,data=Ttraining,method="rf")
+fitModel2= randomForest(classe ~. , data=Ttraining, method="class")
+```
+
+Prediction for the Ttest
+```{r}
+Ppred2 = predict(fitModel2, Ttest)
+```
+
+Check the prediction
+```{r}
+confusionMatrix(Ppred2, Ttest$classe)
+```
+Good accuracy 0.99, that means few predictions errors
+
+Final testing with the test datas
+```{r}
+Ppred3 = predict(fitModel2, TestDataTemp2)
+Ppred3
+```
+
